@@ -19,11 +19,11 @@ WALL_THICKNESS = 1;
 RIB_THICKNESS = 2;
 LIGHTBAR_LENGTH = STRIP_LENGTH * CHAINED_STRIPS_COUNT;
 RIB_HEIGHT = 5;
-RIB_SPACING = 20; // every 20mm
+RIB_COUNT = 14;
 
-
-//calculated
-
+front_face_sheer = 10;
+slope_angle = atan(front_face_sheer / LIGHTBAR_HEIGHT); // in degrees
+top_sheer = RIB_HEIGHT * tan(slope_angle);
 
 // offset 
 module dioder_led(
@@ -44,7 +44,6 @@ module dioder_led(
 
 
 module lightbar_frame() {
-    front_face_sheer = 10;
 
 
     union() {
@@ -70,39 +69,45 @@ module lightbar_frame() {
 
 lightbar_frame();
 
-module rib_blank(x) {
-    translate([x, -50, -50])
-        cube([
-            RIB_THICKNESS,
-            LIGHTBAR_DEPTH + 100,
-            LIGHTBAR_HEIGHT + 100
-        ]);
-}
-
-module rib(x) {
-    difference() {
-
-        rib_blank(x);
-        // subtract the hollow interior
-        translate([0, WALL_THICKNESS, WALL_THICKNESS])
-            cube([
-                LIGHTBAR_LENGTH,
-                LIGHTBAR_DEPTH - WALL_THICKNESS * 2,
-                LIGHTBAR_HEIGHT
+module rib(x_pos) {
+    shear = front_face_sheer;      
+    rib_h = RIB_HEIGHT;           
+    rib_t = RIB_THICKNESS;         
+    depth = LIGHTBAR_DEPTH;
+    translate([x_pos, 0, 0])
+    zrot(90) xrot(90)
+        linear_extrude(height = rib_t)
+            polygon(points=[
+                [0, 0],             // back bottom
+                [depth, 0],         // front bottom
+                [depth + top_sheer, rib_h], // front top (sheared)
+                [0, rib_h]          // back top
             ]);
-
-        // subtract exterior geometry
-        lightbar_frame();
-
-        // subtract LED valleys
-        led_valleys();
-    }
 }
+
+
+
+        
+
+
+rib(0);
+
+
 
 module ribs() {
-    for (x = [0 : RIB_SPACING : LIGHTBAR_LENGTH - RIB_THICKNESS])
+    usable_length = LIGHTBAR_LENGTH - WALL_THICKNESS * 2;
+    rib_spacing = usable_length / (RIB_COUNT - 1);
+
+    for (i = [0 : RIB_COUNT - 1]) {
+        x =
+            WALL_THICKNESS
+          + i * rib_spacing
+          - RIB_THICKNESS / 2;
+
         rib(x);
+    }
 }
 
 ribs();
 
+// ribs();
