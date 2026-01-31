@@ -1,10 +1,14 @@
 include<global.scad>
-// include <BOSL2/std.scad>
-  
-//The width of the end tapers in at the top by about 1mm, this means the clip/teeth need to account for it.
-dioder_end_w_b = 9.7; //mm
-dioder_end_w_t = 8.1; //mm
-dioder_end_h = 7.4; //mm
+use <./pegmixer.scad>
+// use <./pegplate.scad>
+
+PEG_PLATE_W = 30;
+PEG_PLATE_H = 35;
+PEG_PLATE_THICKNESS = 7;
+
+dioder_end_w_b = 11; //mm
+dioder_end_w_t = 9.5; //mm
+dioder_end_h = 7.5; //mm
 
 //global variables
 STRIP_LENGTH = 250;
@@ -13,7 +17,7 @@ PARALLEL_STRIPS_COUNT = 2; //depth of one bracket is 18
 BRACKET_PADDING = 7; //From the edge of the light to the edge of the LED bracket
 LED_PADDING = 7; //Distance between each LED along the strip
 LIGHTBAR_DEPTH = ((LED_PADDING * 2 ) * PARALLEL_STRIPS_COUNT) + (BRACKET_PADDING * 2); //From the wall
-LIGHTBAR_HEIGHT = 20; //Height of the lightbar
+LIGHTBAR_HEIGHT = 50; //Height of the lightbar
 WALL_THICKNESS = 1;
 RIB_THICKNESS = 2;
 LIGHTBAR_LENGTH = STRIP_LENGTH * CHAINED_STRIPS_COUNT;
@@ -24,8 +28,8 @@ MAX_PRINTER_WIDTH = 300; // for k1se
 CLIP_OVERRIDE = true;
 CLIPS_ENABLED = LIGHTBAR_LENGTH >= MAX_PRINTER_WIDTH || CLIP_OVERRIDE ? true : false;
 
-DIFFUSER_THICKNESS = 0.25;
-DIFFUSER_CLEARANCE = 0.3;   // looseness
+DIFFUSER_THICKNESS = 1.5;
+DIFFUSER_CLEARANCE = 0.5;   // looseness
 DIFFUSER_LIP       = 1.0;   // retention lip
 DIFFUSER_SLOT      = DIFFUSER_THICKNESS + DIFFUSER_CLEARANCE;
 CHANNEL_DEPTH      = 5;
@@ -111,7 +115,7 @@ module brackets() {
             repeat_axis(parallel, LED_PADDING + dioder_end_w_b, [0,1,0]) { 
                 repeat_axis(chain, STRIP_LENGTH + 1, [1,0,0]) { 
                     zrot(90) 
-                    translate([dioder_end_w_b/2+LED_PADDING,1, RIB_HEIGHT- dioder_end_h]) 
+                    translate([dioder_end_w_b/2+LED_PADDING -2,1, RIB_HEIGHT- dioder_end_h]) 
                     dioder_led(); 
                 }   
             }
@@ -171,7 +175,34 @@ module clip_voids() {
     cube(center=true,[clipdepth + clipwall, 8-clipwall, 3-clipwall]);
 }
 
-lightbar_frame();
+module peg_plate() {
+    pegboard_thickness = 3;
+    translate([0,0,PEG_PLATE_H / 2 - 3])
+    pegmixer(hole_d = 3, board_thickness = pegboard_thickness, alignment_peg_length=0, arc_d_mul=4) virtual([]);
+    cube([PEG_PLATE_W - 1, PEG_PLATE_THICKNESS - 2, PEG_PLATE_H ], center=true);
+}
 
-// extension_clips();
+module peg_slot() {
+    clearance = 0.2;
+    difference(){
+        difference(){
+            cube([PEG_PLATE_W + 2, PEG_PLATE_THICKNESS + 2, PEG_PLATE_H + 2 ], center=true);
+            translate([0,0,-2]) cube([PEG_PLATE_W - 10, PEG_PLATE_THICKNESS +5, PEG_PLATE_H +2 ], center=true);
+        }
+        translate([0,0,-0.5]) cube([PEG_PLATE_W + clearance, PEG_PLATE_THICKNESS + clearance, PEG_PLATE_H + clearance + 2 ], center=true);
+    }
+}
+
+// peg_plate();
+
+union() {
+    lightbar_frame();
+    for (i=[0:CHAINED_STRIPS_COUNT]) {
+        repeat_axis(2, (LIGHTBAR_LENGTH / 2) * i, [1,0,0]) {
+            translate([STRIP_LENGTH / 4, -PEG_PLATE_THICKNESS +3, LIGHTBAR_HEIGHT / 2])
+            xrot(180) peg_slot();
+        }
+    }
+}
+
 
